@@ -21,7 +21,7 @@ for j, ax, method in zip(range(len(axs)), axs, methods):
         this_data = data[f"mf-{model}-{method}"]
         x = [d["mean"] for d in this_data.values()]
         x_err = [d["2-sigma-u"] for d in this_data.values()]
-        y_labels += [k for k in this_data.keys()]
+        y_labels += [k + " name" for k in this_data.keys()]
         y = range(i * len(x), (i+1) * len(x))
         ax.errorbar(x, y, xerr=x_err, fmt='o', label=model)
     
