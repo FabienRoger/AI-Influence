@@ -47,8 +47,7 @@ def evaluate(resumes: list[str], model, eval_method, n=20):
         [("system", prompts["system_prompt"]), ("user", resume + "\n\n" + prompts["suffix"])] for resume in resumes
     ]
     answers = run_llm(model, prompts, n=n, temperature=1)
-    # scores = [[try_float(a.completion) for a in answer if try_float(a.completion) is not None] for answer in answers]
-    scores = [methods["eval"]([a.completion for a in answer]) for answer in answers]
+    scores = [methods[eval_method]([a.completion for a in answer]) for answer in answers]
     avg_scores = [np.mean(score) for score in scores]
     u_scores = [np.std(score) / np.sqrt(len(score)) for score in scores]
     return np.array(avg_scores), np.array(u_scores)
@@ -102,9 +101,39 @@ def run_male_female(model_name: str = "gpt-3.5-turbo", eval_method: str = "direc
     }
 
 
+def run_male_female_ant(model_name: str = "gpt-3.5-turbo", eval_method: str = "direct", m=200):
+    result_path = Path(f"results/results-{model_name}-{eval_method}-ant.json")
+    model = OpenAIChatModel(model_ids=[model_name])
+    file = Path("data/implicit.jsonl")
+    entries = [json.loads(line) for line in file.read_text().splitlines()]
+    relevant_entries = [e for e in entries if e["decision_question_id"] in [14, 15, 16, 18, 19]]
+    gender_labels = [e["gender"] for e in relevant_entries]
+    descriptions = [e["filled_template"].rsplit(".", 1)[0] for e in relevant_entries]
+
+    avg_scores, u_scores = evaluate(descriptions, model=model, eval_method=eval_method, n=100)
+
+    female_scores = [s for s, g in zip(avg_scores, gender_labels) if g == "female"]
+    male_scores = [s for s, g in zip(avg_scores, gender_labels) if g == "male"]
+    results = {
+        "avg_scores": avg_scores.tolist(),
+        "u_scores": u_scores.tolist(),
+        "gender_labels": gender_labels,
+        "female_scores": female_scores,
+        "male_scores": male_scores,
+    }
+    result_path.write_text(json.dumps(results))
+
+    print(f"female scores: {np.mean(female_scores):.2f} +- {u(female_scores):.2f}")
+    print(f"male scores: {np.mean(male_scores):.2f} +- {u(male_scores):.2f}")
+    return {
+        "male": {"mean": np.mean(male_scores), "2-sigma-u": u(male_scores)},
+        "female": {"mean": np.mean(female_scores), "2-sigma-u": u(female_scores)},
+    }
+
+
 def run_pro_anti_ai(model_name: str = "gpt-3.5-turbo", template_name: str = "fabien", eval_method: str = "direct"):
     random.seed(42)
-    result_path = Path(f"results/results-{model_name}-{template_name}.json")
+    result_path = Path(f"results/results-{model_name}-{template_name}-{eval_method}.json")
     model = OpenAIChatModel(model_ids=[model_name])
     template = Path(f"data/{template_name}_template.txt").read_text()
 
@@ -173,9 +202,11 @@ if __name__ == "__main__":
     stats = {}
     for eval_method in ["direct", "sentiment"]:
         for model in ["gpt-3.5-turbo", "gpt-4"]:
-            s = run_male_female(model, eval_method)
-            stats[f"mf-{model}-{eval_method}"] = s
-            for template in ["fabien", "minimal"]:
-                s = run_pro_anti_ai(model, template, eval_method)
-                stats[f"{model}-{template}-{eval_method}"] = s
+            s = run_male_female_ant(model, eval_method)
+            stats[f"mfant-{model}-{eval_method}"] = s
+            # s = run_male_female(model, eval_method)
+            # stats[f"mf-{model}-{eval_method}"] = s
+            # for template in ["fabien", "minimal"]:
+            #     s = run_pro_anti_ai(model, template, eval_method)
+            #     stats[f"{model}-{template}-{eval_method}"] = s
     Path("results/summary_stats.json").write_text(json.dumps(stats))
