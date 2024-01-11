@@ -34,6 +34,7 @@ for j, ax, method in zip(range(len(axs)), axs, methods):
     ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
     if j == 0:
         ax.legend()
+fig.savefig("images/gender.png", bbox_inches="tight")
 # %%
 # print male-female bias in a errorbar horizontal
 fig, axs = plt.subplots(1, 2, dpi=300, figsize=(6, 2.5), sharey=True)
@@ -60,9 +61,11 @@ for j, ax, method in zip(range(len(axs)), axs, methods):
     ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
     if j == 0:
         ax.legend()
+fig.savefig("images/gender_control.png", bbox_inches="tight")
 # %%
 # print normal-alternative bias in a errorbar horizontal
 normal_alternative_keys = ["normal", "alternative"]
+pro_anti_keys = ["Pro-AI", "Anti-AI"]
 
 for normal_alternative in [True, False]:
     figsize = (6, 3) if normal_alternative else (8, 4)
@@ -77,13 +80,13 @@ for normal_alternative in [True, False]:
         for i, model in enumerate(models):
             this_data = {}
             for template_name, template in templates.items():
-                this_data.update(
-                    {
-                        f"{k} ({template})": v
-                        for k, v in data[f"{model}-{template_name}-{method}"].items()
-                        if not (k in normal_alternative_keys) ^ normal_alternative
-                    }
+                items = list(data[f"{model}-{template_name}-{method}"].items())
+                keys = (
+                    normal_alternative_keys
+                    if normal_alternative
+                    else set(k for k, v in items) - set(normal_alternative_keys) - set(pro_anti_keys)
                 )
+                this_data.update({f"{k} ({template})": v for k, v in items if k in keys})
 
             x = [d["mean"] for d in this_data.values()]
             x_err = [d["2-sigma-u"] for d in this_data.values()]
@@ -101,10 +104,10 @@ for normal_alternative in [True, False]:
         ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
         if j == 0:
             ax.legend()
-    plt.plot()
+    fig.savefig(f"images/normal_vs_alternative.png" if normal_alternative else f"images/excluding_theme.png", bbox_inches="tight")
+    plt.show()
 # %%
 # print normal-alternative bias in a errorbar horizontal
-normal_alternative_keys = ["Pro-AI", "Anti-AI"]
 
 figsize = (6, 3)
 line_every = 2
@@ -122,7 +125,7 @@ for j, ax, method in zip(range(len(axs)), axs, methods):
                 {
                     f"{k} ({template})": v
                     for k, v in data[f"{model}-{template_name}-{method}"].items()
-                    if k in normal_alternative_keys
+                    if k in pro_anti_keys
                 }
             )
 
@@ -142,4 +145,5 @@ for j, ax, method in zip(range(len(axs)), axs, methods):
     ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
     if j == 0:
         ax.legend()
+fig.savefig(f"images/pro_anti_ai_sentiment.png", bbox_inches="tight")
 # %%
