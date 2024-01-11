@@ -142,5 +142,4 @@ for j, ax, method in zip(range(len(axs)), axs, methods):
     ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
     if j == 0:
         ax.legend()
-plt.plot()
 # %%
