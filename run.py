@@ -7,6 +7,10 @@ import json
 import random
 from transformers import pipeline
 
+CANARY = Path("data/canary.txt").read_text()
+
+def rm_can(text: str):
+    return text.replace(CANARY, "")
 
 @cache
 def get_sentiment_pipeline():
@@ -44,7 +48,7 @@ def evaluate(resumes: list[str], model, eval_method, n=20):
     prompts = json.load(open("data/prompt.json"))[eval_method]
 
     prompts = [
-        [("system", prompts["system_prompt"]), ("user", resume + "\n\n" + prompts["suffix"])] for resume in resumes
+        [("system", rm_can(prompts["system_prompt"])), ("user", rm_can(resume + "\n\n" + prompts["suffix"]))] for resume in resumes
     ]
     answers = run_llm(model, prompts, n=n, temperature=1)
     scores = [methods[eval_method]([a.completion for a in answer]) for answer in answers]
